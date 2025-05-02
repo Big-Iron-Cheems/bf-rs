@@ -1,0 +1,27 @@
+[package]
+name = "bf-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "bf_benchmark"
+harness = false
+
+[profile.dev]
+opt-level = 1
+debug = true
+debug-assertions = true
+overflow-checks = true
+
+[profile.release]
+opt-level = 3
+debug = false
+debug-assertions = false
+overflow-checks = false
+codegen-units = 1
+lto = "fat"
+panic = "abort"
+strip = "symbols"
