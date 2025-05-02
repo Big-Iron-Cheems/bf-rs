@@ -68,16 +68,29 @@ impl Parser {
     }
 
     pub fn parse(&mut self) -> Result<Vec<BfOp>, ParseError> {
-        self.parse_sequence()
+        self.parse_sequence(false, None)
     }
 
-    fn parse_sequence(&mut self) -> Result<Vec<BfOp>, ParseError> {
+    fn parse_sequence(
+        &mut self,
+        inside_loop: bool,
+        loop_start_pos: Option<usize>,
+    ) -> Result<Vec<BfOp>, ParseError> {
         let mut ops = Vec::new();
 
         while !self.tokens.is_empty() {
             let current_token = self.tokens.front().cloned();
             match current_token {
-                Some(Token::LoopEnd) => break,
+                Some(Token::LoopEnd) => {
+                    if inside_loop {
+                        break;
+                    } else {
+                        self.tokens.pop_front();
+                        return Err(ParseError::UnmatchedLoopEnd {
+                            position: Some(self.position),
+                        });
+                    }
+                }
                 Some(token) => {
                     self.tokens.pop_front();
                     self.position += 1;
@@ -102,11 +115,12 @@ impl Parser {
                         Token::OutputByte => ops.push(BfOp::OutputByte),
                         Token::InputByte => ops.push(BfOp::InputByte),
                         Token::LoopStart => {
-                            let loop_body = self.parse_sequence()?;
+                            let loop_start_position = self.position - 1;
+                            let loop_body = self.parse_sequence(true, Some(loop_start_position))?;
 
                             if self.tokens.pop_front() != Some(Token::LoopEnd) {
                                 return Err(ParseError::UnmatchedLoopStart {
-                                    position: Some(self.position),
+                                    position: Some(loop_start_position),
                                 });
                             }
                             self.position += 1;
@@ -114,12 +128,20 @@ impl Parser {
                         }
                         Token::LoopEnd => {
                             return Err(ParseError::UnmatchedLoopEnd {
-                                position: Some(self.position),
+                                position: Some(self.position - 1),
                             })
                         }
                     }
                 }
-                None => break,
+                None => {
+                    if inside_loop {
+                        return Err(ParseError::UnmatchedLoopStart {
+                            position: loop_start_pos,
+                        });
+                    } else {
+                        break;
+                    }
+                }
             }
         }
 
