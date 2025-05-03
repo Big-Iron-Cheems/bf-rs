@@ -49,6 +49,101 @@ pub enum BfOp {
     OutputByte,              // .
     InputByte,               // ,
     Loop(Vec<BfOp>),         // [ ... ]
+    ClearCell,               // [+] or [-]
+}
+
+impl fmt::Display for BfOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            BfOp::IncrementPointer(count) => write!(
+                f,
+                ">{}",
+                if *count > 1 {
+                    count.to_string()
+                } else {
+                    String::new()
+                }
+            ),
+            BfOp::DecrementPointer(count) => write!(
+                f,
+                "<{}",
+                if *count > 1 {
+                    count.to_string()
+                } else {
+                    String::new()
+                }
+            ),
+            BfOp::IncrementByte(count) => write!(
+                f,
+                "+{}",
+                if *count > 1 {
+                    count.to_string()
+                } else {
+                    String::new()
+                }
+            ),
+            BfOp::DecrementByte(count) => write!(
+                f,
+                "-{}",
+                if *count > 1 {
+                    count.to_string()
+                } else {
+                    String::new()
+                }
+            ),
+            BfOp::OutputByte => write!(f, "."),
+            BfOp::InputByte => write!(f, ","),
+            BfOp::Loop(ops) => {
+                write!(f, "[")?;
+                for op in ops {
+                    write!(f, "{}", op)?;
+                }
+                write!(f, "]")
+            }
+            BfOp::ClearCell => write!(f, "[0]"), // TODO: figure out a good repr for this
+        }
+    }
+}
+
+/*fn write_op(f: &mut fmt::Formatter<'_>, symbol: &str, count: usize) -> fmt::Result {
+    if count > 1 {
+        write!(f, "{}{}", symbol, count)
+    } else {
+        write!(f, "{}", symbol)
+    }
+}*/
+
+/// Prints the program's operations to stdout with indentation.
+pub fn print_ops(ops: &[BfOp], indent_level: usize) {
+    for op in ops {
+        match op {
+            BfOp::Loop(body) => {
+                println!("{}[", " ".repeat(indent_level));
+                print_ops(body, indent_level + 2);
+                println!("{}]", " ".repeat(indent_level));
+            }
+            _ => println!("{}{}", " ".repeat(indent_level), op),
+        }
+    }
+}
+
+/// Writes the program's operations to a file with indentation.
+pub fn write_ops_to_file(
+    ops: &[BfOp],
+    file: &mut impl std::io::Write,
+    indent_level: usize,
+) -> std::io::Result<()> {
+    for op in ops {
+        match op {
+            BfOp::Loop(body) => {
+                writeln!(file, "{}[", " ".repeat(indent_level))?;
+                write_ops_to_file(body, file, indent_level + 2)?;
+                writeln!(file, "{}]", " ".repeat(indent_level))?;
+            }
+            _ => writeln!(file, "{}{}", " ".repeat(indent_level), op)?,
+        }
+    }
+    Ok(())
 }
 
 /// Parser for Brainfuck programs.

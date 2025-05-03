@@ -115,6 +115,9 @@ impl Interpreter {
                         self.execute(body, stdout, stdin)?
                     }
                 }
+                BfOp::ClearCell => {
+                    self.memory[self.pointer] = 0;
+                }
             }
         }
 
