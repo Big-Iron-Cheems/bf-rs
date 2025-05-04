@@ -1,5 +1,7 @@
+#![cfg(feature = "optimizer")]
+
 use crate::optimizer::optimizer::OptimizationRule;
-use crate::parser::BfOp;
+use crate::parser::{BfOp, OptimizedOp};
 
 /// Rule to optimize clear loops like `[+]` or `[-]` to set memory cell to 0.
 pub struct ClearLoopRule {}
@@ -18,7 +20,7 @@ impl OptimizationRule for ClearLoopRule {
             if body.len() == 1 {
                 if let BfOp::IncrementByte(_) | BfOp::DecrementByte(_) = body[0] {
                     // Detected a `[+]` or `[-]` loop, set cell to 0
-                    return Some(vec![BfOp::ClearCell]);
+                    return Some(vec![BfOp::Optimized(OptimizedOp::ClearCell)]);
                 }
             }
         }

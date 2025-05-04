@@ -1,13 +1,18 @@
-use crate::{
-    error::BfError, interpreter::Interpreter, lexer::Lexer, optimizer::optimizer::Optimizer,
-    parser::write_ops_to_file, parser::Parser,
-};
+use crate::{error::BfError, interpreter::Interpreter, lexer::Lexer, parser::Parser};
 use std::fs;
+
+#[cfg(feature = "optimizer")]
+use crate::optimizer::optimizer::Optimizer;
+
+#[cfg(feature = "debug")]
 use std::fs::File;
 
+#[cfg(feature = "debug")]
+mod debug;
 mod error;
 mod interpreter;
 mod lexer;
+#[cfg(feature = "optimizer")]
 mod optimizer;
 mod parser;
 
@@ -29,21 +34,37 @@ fn main() -> Result<(), BfError> {
     let mut parser = Parser::new(tokens);
     let program = parser.parse()?;
 
-    // Dump the parsed program to a file
-    let mut file = File::create("parsed_program.bf")?;
-    write_ops_to_file(&program, &mut file, 0)?;
+    #[cfg(feature = "debug")]
+    {
+        std::fs::create_dir_all("out")?;
+
+        // Dump the parsed program to a file
+        let mut file = File::create("out/parsed_program.bfir")?;
+        debug::write_ops_to_file(&program, &mut file, 0)?;
+
+        // Print the basic stats
+        debug::print_op_stats(&program);
+    }
 
     // Step 2.1: Optimization - apply optimization rules
-    let optimizer = Optimizer::new();
-    let optimized_program = optimizer.optimize(program);
+    #[cfg(feature = "optimizer")]
+    let program = {
+        let optimizer = Optimizer::new();
+        let optimized = optimizer.optimize(program);
 
-    // Dump the optimized program to a file
-    let mut file = File::create("optimized_program.bf")?;
-    write_ops_to_file(&optimized_program, &mut file, 0)?;
+        #[cfg(feature = "debug")]
+        {
+            let mut file = File::create("out/optimized_program.bfir")?;
+            debug::write_ops_to_file(&optimized, &mut file, 0)?;
+            debug::print_op_stats(&optimized);
+        }
+
+        optimized
+    };
 
     // Step 3: Execution
     let mut interpreter = Interpreter::new();
-    interpreter.run(&optimized_program)?;
+    interpreter.run(&program)?;
 
     Ok(())
 }

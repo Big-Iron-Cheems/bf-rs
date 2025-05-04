@@ -12,6 +12,13 @@ criterion = "0.5.1"
 name = "bf_benchmark"
 harness = false
 
+[features]
+default = []
+# Enable debugging functions
+debug = []
+# Enable the optimizer module, applies optimizations to the Brainfuck code before interpretation
+optimizer = []
+
 [profile.dev]
 opt-level = 1
 debug = true

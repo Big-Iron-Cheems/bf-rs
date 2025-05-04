@@ -2,6 +2,8 @@
 //! This module contains the implementation of a Brainfuck interpreter in Rust.
 
 use crate::parser::BfOp;
+#[cfg(feature = "optimizer")]
+use crate::parser::OptimizedOp;
 use std::error::Error;
 use std::io::{Read, Write};
 use std::{fmt, io};
@@ -115,9 +117,12 @@ impl Interpreter {
                         self.execute(body, stdout, stdin)?
                     }
                 }
-                BfOp::ClearCell => {
-                    self.memory[self.pointer] = 0;
-                }
+                #[cfg(feature = "optimizer")]
+                BfOp::Optimized(opt_op) => match opt_op {
+                    OptimizedOp::ClearCell => {
+                        self.memory[self.pointer] = 0;
+                    }
+                },
             }
         }
 

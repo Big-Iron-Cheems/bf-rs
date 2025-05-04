@@ -1,3 +1,5 @@
+#![cfg(feature = "optimizer")]
+
 use crate::optimizer::rules::ClearLoopRule;
 use crate::parser::BfOp;
 

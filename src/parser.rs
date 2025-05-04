@@ -49,7 +49,18 @@ pub enum BfOp {
     OutputByte,              // .
     InputByte,               // ,
     Loop(Vec<BfOp>),         // [ ... ]
-    ClearCell,               // [+] or [-]
+
+    // Optimized operations
+    #[cfg(feature = "optimizer")]
+    Optimized(OptimizedOp),
+}
+
+/// The OptimizedOp enum represents optimized operations that can be applied to Brainfuck programs.  
+/// These are not standard Brainfuck operations, and are toggled by the `optimizer` feature.
+#[cfg(feature = "optimizer")]
+#[derive(Debug, Clone, PartialEq)]
+pub enum OptimizedOp {
+    ClearCell, // [+] or [-]
 }
 
 impl fmt::Display for BfOp {
@@ -100,50 +111,19 @@ impl fmt::Display for BfOp {
                 }
                 write!(f, "]")
             }
-            BfOp::ClearCell => write!(f, "[0]"), // TODO: figure out a good repr for this
+            #[cfg(feature = "optimizer")]
+            BfOp::Optimized(opt_op) => opt_op.fmt(f),
         }
     }
 }
 
-/*fn write_op(f: &mut fmt::Formatter<'_>, symbol: &str, count: usize) -> fmt::Result {
-    if count > 1 {
-        write!(f, "{}{}", symbol, count)
-    } else {
-        write!(f, "{}", symbol)
-    }
-}*/
-
-/// Prints the program's operations to stdout with indentation.
-pub fn print_ops(ops: &[BfOp], indent_level: usize) {
-    for op in ops {
-        match op {
-            BfOp::Loop(body) => {
-                println!("{}[", " ".repeat(indent_level));
-                print_ops(body, indent_level + 2);
-                println!("{}]", " ".repeat(indent_level));
-            }
-            _ => println!("{}{}", " ".repeat(indent_level), op),
+#[cfg(feature = "optimizer")]
+impl fmt::Display for OptimizedOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            OptimizedOp::ClearCell => write!(f, "[0]"), // TODO: figure out a good repr for this
         }
     }
-}
-
-/// Writes the program's operations to a file with indentation.
-pub fn write_ops_to_file(
-    ops: &[BfOp],
-    file: &mut impl std::io::Write,
-    indent_level: usize,
-) -> std::io::Result<()> {
-    for op in ops {
-        match op {
-            BfOp::Loop(body) => {
-                writeln!(file, "{}[", " ".repeat(indent_level))?;
-                write_ops_to_file(body, file, indent_level + 2)?;
-                writeln!(file, "{}]", " ".repeat(indent_level))?;
-            }
-            _ => writeln!(file, "{}{}", " ".repeat(indent_level), op)?,
-        }
-    }
-    Ok(())
 }
 
 /// Parser for Brainfuck programs.
