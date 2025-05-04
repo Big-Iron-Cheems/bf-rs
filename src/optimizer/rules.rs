@@ -7,11 +7,7 @@ use crate::parser::{BfOp, OptimizedOp};
 pub struct ClearLoopRule {}
 
 impl OptimizationRule for ClearLoopRule {
-    fn name(&self) -> &'static str {
-        "Clear Loop"
-    }
-
-    fn apply(&self, ops: &[BfOp]) -> Option<Vec<BfOp>> {
+    fn apply(&self, ops: &[BfOp]) -> Option<(Vec<BfOp>, usize)> {
         if ops.is_empty() {
             return None;
         }
@@ -20,7 +16,8 @@ impl OptimizationRule for ClearLoopRule {
             if body.len() == 1 {
                 if let BfOp::IncrementByte(_) | BfOp::DecrementByte(_) = body[0] {
                     // Detected a `[+]` or `[-]` loop, set cell to 0
-                    return Some(vec![BfOp::Optimized(OptimizedOp::ClearCell)]);
+                    // Consumes 1 BfOp (the loop itself) and replaces it with a clear cell operation
+                    return Some((vec![BfOp::Optimized(OptimizedOp::ClearCell)], 1));
                 }
             }
         }

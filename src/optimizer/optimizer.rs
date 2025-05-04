@@ -5,11 +5,10 @@ use crate::parser::BfOp;
 
 /// Represents an optimization that can be applied to a Brainfuck program.
 pub trait OptimizationRule {
-    /// Name of the optimization rule.
-    fn name(&self) -> &'static str;
     /// Applies the optimization rule to a slice of BfOp operations.
-    /// Returns `Some(Vec<BfOp>)` with the optimized operations if any optimizations were made,
-    fn apply(&self, ops: &[BfOp]) -> Option<Vec<BfOp>>;
+    /// Returns `Some((Vec<BfOp>, usize))` with the optimized operations
+    /// and the number of original operations consumed if any optimizations were made.
+    fn apply(&self, ops: &[BfOp]) -> Option<(Vec<BfOp>, usize)>;
 }
 
 /// Optimizer for Brainfuck programs.
@@ -26,6 +25,7 @@ impl Optimizer {
     }
 
     /// Create an optimizer with no rules.
+    #[allow(dead_code)]
     pub fn empty() -> Self {
         Self { rules: Vec::new() }
     }
@@ -47,7 +47,7 @@ impl Optimizer {
     }
 
     fn optimize_ops(&self, ops: Vec<BfOp>) -> Vec<BfOp> {
-        let mut result = Vec::new();
+        let mut result = Vec::with_capacity(ops.len());
         let mut i = 0;
 
         while i < ops.len() {
@@ -55,11 +55,10 @@ impl Optimizer {
 
             // Try to find a pattern at the current position
             for rule in &self.rules {
-                if let Some(replacement) = rule.apply(&ops[i..]) {
+                if let Some((replacement, consumed)) = rule.apply(&ops[i..]) {
                     result.extend(replacement);
-                    // Skip ahead based on pattern length
-                    // Assuming the rule returns the number of BfOps it replaced
-                    i += self.rule_pattern_length(&ops[i..], rule.as_ref());
+                    // Skip ahead based on pattern length returned by the rule
+                    i += consumed;
                     optimized = true;
                     break;
                 }
@@ -79,12 +78,5 @@ impl Optimizer {
         }
 
         result
-    }
-
-    fn rule_pattern_length(&self, ops: &[BfOp], rule: &dyn OptimizationRule) -> usize {
-        match rule.name() {
-            "Clear Loop" => 1,
-            _ => 1, // Default to 1 for other rules
-        }
     }
 }
