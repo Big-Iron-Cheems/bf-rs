@@ -1,18 +1,4 @@
-//! Brainfuck lexer.  
-//! It takes a Brainfuck program as string and returns a vector of tokens.
-
-/// The Token enum represents the different Brainfuck commands.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Token {
-    IncrementPointer, // >
-    DecrementPointer, // <
-    IncrementByte,    // +
-    DecrementByte,    // -
-    OutputByte,       // .
-    InputByte,        // ,
-    LoopStart,        // [
-    LoopEnd,          // ]
-}
+use crate::lexer::Token;
 
 /// Lexer for Brainfuck programs.
 pub struct Lexer<'a> {

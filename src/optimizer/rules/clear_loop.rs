@@ -1,6 +1,6 @@
 #![cfg(feature = "optimizer")]
 
-use crate::optimizer::optimizer::OptimizationRule;
+use crate::optimizer::OptimizationRule;
 use crate::parser::{BfOp, OptimizedOp};
 
 /// Rule to optimize clear loops like `[+]` or `[-]` to set memory cell to 0.

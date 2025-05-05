@@ -2,7 +2,7 @@ use crate::{error::BfError, interpreter::Interpreter, lexer::Lexer, parser::Pars
 use std::fs;
 
 #[cfg(feature = "optimizer")]
-use crate::optimizer::optimizer::Optimizer;
+use crate::optimizer::Optimizer;
 
 #[cfg(feature = "debug")]
 use std::fs::File;

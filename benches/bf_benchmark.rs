@@ -3,12 +3,13 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::io;
 
 #[cfg(feature = "optimizer")]
-use bf_rs::optimizer::optimizer::Optimizer;
+use bf_rs::optimizer::Optimizer;
 
 const SAMPLE_SIZE: usize = 10;
 const EXAMPLES: &[(&str, &str)] = &[
     // ("hello_world", include_str!("../examples/hello_world.bf")),
     ("mandelbrot", include_str!("../examples/mandelbrot.bf")),
+    ("hanoi", include_str!("../examples/hanoi.bf")),
     // Add more examples as needed
 ];
 

@@ -8,5 +8,9 @@
 //!
 //! This module is available only when the `optimizer` feature is enabled.
 
-pub mod optimizer;
+mod optimization_rule;
+mod optimizer;
 mod rules;
+
+pub use optimization_rule::OptimizationRule;
+pub use optimizer::Optimizer;
