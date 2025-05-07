@@ -1,5 +1,3 @@
-#![cfg(feature = "optimizer")]
-
 use crate::optimizer::OptimizationRule;
 use crate::parser::{BfOp, OptimizedOp};
 

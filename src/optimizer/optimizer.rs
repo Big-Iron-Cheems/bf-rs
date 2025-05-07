@@ -1,6 +1,4 @@
-#![cfg(feature = "optimizer")]
-
-use crate::optimizer::rules::ClearLoopRule;
+use crate::optimizer::rules::*;
 use crate::optimizer::OptimizationRule;
 use crate::parser::BfOp;
 
@@ -31,6 +29,8 @@ impl Optimizer {
     /// Register the default set of optimization rules.
     fn register_default_rules(&mut self) {
         self.register_rule(Box::new(ClearLoopRule {}));
+        self.register_rule(Box::new(ByteAdjustmentRule {}));
+        self.register_rule(Box::new(PointerAdjustmentRule {}));
         // Register other rules here
     }
 

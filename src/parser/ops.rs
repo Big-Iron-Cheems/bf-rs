@@ -83,7 +83,7 @@ impl fmt::Display for BfOp {
 impl fmt::Display for OptimizedOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            OptimizedOp::ClearCell => write!(f, "[0]"), // TODO: figure out a good repr for this
+            OptimizedOp::ClearCell => write!(f, "[0]"),
         }
     }
 }

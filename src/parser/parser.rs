@@ -98,13 +98,49 @@ impl Parser {
         Ok(ops)
     }
 
-    /// Count the number of consecutive tokens of a given type at the front of the queue.  
-    /// If any tokens are counted, they are removed from the queue.
+    /// Counts and removes consecutive tokens of the specified type from the front of the queue.
+    ///
+    /// # Arguments
+    /// * `token_type` - The token type to count (must be a repeatable token type)
+    ///
+    /// # Returns
+    /// The number of consecutive matching tokens found (may be capped by type-specific limits)
+    ///
+    /// # Details
+    /// - For byte operations (`IncrementByte`/`DecrementByte`), counts up to `u8::MAX` (255)
+    /// - For pointer operations (`IncrementPointer`/`DecrementPointer`), counts up to `usize::MAX - 1`
+    /// - Matching tokens are removed from the queue and position is adjusted accordingly
+    /// - Issues a warning when byte operations exceed the `u8::MAX` limit
+    ///
+    /// # Panics
+    /// If called with a token type that doesn't support consecutive counting (e.g., `OutputByte`, `InputByte`, etc.)
     fn count_consecutive(&mut self, token_type: Token) -> usize {
+        let limit = match token_type {
+            Token::IncrementByte | Token::DecrementByte => u8::MAX as usize,
+            Token::IncrementPointer | Token::DecrementPointer => usize::MAX - 1,
+            _ => panic!(
+                "Unexpected token type for count_consecutive: {:?}",
+                token_type
+            ),
+        };
         let mut count = 0;
 
-        while self.tokens.get(count) == Some(&&token_type) {
+        while count < limit && self.tokens.get(count) == Some(&token_type) {
             count += 1;
+        }
+
+        if count == limit && self.tokens.get(count) == Some(&&token_type) {
+            let mut excess = 0;
+            while self.tokens.get(count + excess) == Some(&token_type) {
+                excess += 1;
+            }
+
+            if token_type == Token::IncrementByte || token_type == Token::DecrementByte {
+                eprintln!(
+                    "Warning: More than {} consecutive `{}` tokens truncated to maximum value.",
+                    limit, token_type
+                );
+            }
         }
 
         if count > 0 {
