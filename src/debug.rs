@@ -16,22 +16,33 @@ pub fn print_op_stats(ops: &[BfOp]) {
     count_ops(ops, &mut basic_stats, &mut optimized_stats);
 
     println!("Basic Operations:");
+
     println!(
-        "  Increment pointer (>): {}",
+        "  Pointer movements: {} total",
+        basic_stats.get("pointer_movement").unwrap_or(&0)
+    );
+    println!(
+        "    Increment pointer (>): {}",
         basic_stats.get("increment_pointer").unwrap_or(&0)
     );
     println!(
-        "  Decrement pointer (<): {}",
+        "    Decrement pointer (<): {}",
         basic_stats.get("decrement_pointer").unwrap_or(&0)
     );
+
     println!(
-        "  Increment byte (+): {}",
+        "  Byte operations: {} total",
+        basic_stats.get("byte_operation").unwrap_or(&0)
+    );
+    println!(
+        "    Increment byte (+): {}",
         basic_stats.get("increment_byte").unwrap_or(&0)
     );
     println!(
-        "  Decrement byte (-): {}",
+        "    Decrement byte (-): {}",
         basic_stats.get("decrement_byte").unwrap_or(&0)
     );
+
     println!(
         "  Output byte (.): {}",
         basic_stats.get("output_byte").unwrap_or(&0)
@@ -66,10 +77,26 @@ fn count_ops(
     for op in ops {
         match op {
             // Basic BF operations
-            BfOp::IncrementPointer(_) => *basic_stats.entry("increment_pointer").or_insert(0) += 1,
-            BfOp::DecrementPointer(_) => *basic_stats.entry("decrement_pointer").or_insert(0) += 1,
-            BfOp::IncrementByte(_) => *basic_stats.entry("increment_byte").or_insert(0) += 1,
-            BfOp::DecrementByte(_) => *basic_stats.entry("decrement_byte").or_insert(0) += 1,
+            BfOp::PointerIncrement(n) => {
+                let count = n.unsigned_abs();
+                *basic_stats.entry("pointer_movement").or_insert(0) += count;
+
+                if *n > 0 {
+                    *basic_stats.entry("increment_pointer").or_insert(0) += count;
+                } else if *n < 0 {
+                    *basic_stats.entry("decrement_pointer").or_insert(0) += count;
+                }
+            }
+            BfOp::Increment(n) => {
+                let count = n.0.unsigned_abs() as usize;
+                *basic_stats.entry("byte_operation").or_insert(0) += count;
+
+                if n.0 > 0 {
+                    *basic_stats.entry("increment_byte").or_insert(0) += count;
+                } else if n.0 < 0 {
+                    *basic_stats.entry("decrement_byte").or_insert(0) += count;
+                }
+            }
             BfOp::OutputByte => *basic_stats.entry("output_byte").or_insert(0) += 1,
             BfOp::InputByte => *basic_stats.entry("input_byte").or_insert(0) += 1,
             BfOp::Loop(body) => {

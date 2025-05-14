@@ -1,5 +1,6 @@
 use crate::{lexer::Token, parser::BfOp, parser::ParseError};
 use std::collections::VecDeque;
+use std::num::Wrapping;
 
 /// Parser for Brainfuck programs.
 pub struct Parser {
@@ -46,21 +47,17 @@ impl Parser {
                     self.position += 1;
 
                     match token {
-                        Token::IncrementPointer => {
-                            let count = self.count_consecutive(Token::IncrementPointer) + 1;
-                            ops.push(BfOp::IncrementPointer(count));
+                        Token::IncrementPointer | Token::DecrementPointer => {
+                            let net = self.count_net_pointer_ops(token);
+                            if net != 0 {
+                                ops.push(BfOp::PointerIncrement(net));
+                            }
                         }
-                        Token::DecrementPointer => {
-                            let count = self.count_consecutive(Token::DecrementPointer) + 1;
-                            ops.push(BfOp::DecrementPointer(count));
-                        }
-                        Token::IncrementByte => {
-                            let count = self.count_consecutive(Token::IncrementByte) + 1;
-                            ops.push(BfOp::IncrementByte(count as u8));
-                        }
-                        Token::DecrementByte => {
-                            let count = self.count_consecutive(Token::DecrementByte) + 1;
-                            ops.push(BfOp::DecrementByte(count as u8));
+                        Token::IncrementByte | Token::DecrementByte => {
+                            let net = self.count_net_byte_ops(token);
+                            if net != 0 {
+                                ops.push(BfOp::Increment(Wrapping(net)));
+                            }
                         }
                         Token::OutputByte => ops.push(BfOp::OutputByte),
                         Token::InputByte => ops.push(BfOp::InputByte),
@@ -98,56 +95,90 @@ impl Parser {
         Ok(ops)
     }
 
-    /// Counts and removes consecutive tokens of the specified type from the front of the queue.
-    ///
-    /// # Arguments
-    /// * `token_type` - The token type to count (must be a repeatable token type)
-    ///
-    /// # Returns
-    /// The number of consecutive matching tokens found (may be capped by type-specific limits)
+    /// Counts the net pointer operations (increment/decrement) from the front of the queue.
     ///
     /// # Details
-    /// - For byte operations (`IncrementByte`/`DecrementByte`), counts up to `u8::MAX` (255)
-    /// - For pointer operations (`IncrementPointer`/`DecrementPointer`), counts up to `usize::MAX - 1`
-    /// - Matching tokens are removed from the queue and position is adjusted accordingly
-    /// - Issues a warning when byte operations exceed the `u8::MAX` limit
-    ///
-    /// # Panics
-    /// If called with a token type that doesn't support consecutive counting (e.g., `OutputByte`, `InputByte`, etc.)
-    fn count_consecutive(&mut self, token_type: Token) -> usize {
-        let limit = match token_type {
-            Token::IncrementByte | Token::DecrementByte => u8::MAX as usize,
-            Token::IncrementPointer | Token::DecrementPointer => usize::MAX - 1,
-            _ => panic!(
-                "Unexpected token type for count_consecutive: {:?}",
-                token_type
-            ),
+    /// If an overflow/underflow occurs, the net value is clamped to `isize::MAX` or `isize::MIN`.
+    fn count_net_pointer_ops(&mut self, token: Token) -> isize {
+        let mut net: isize = match token {
+            Token::IncrementPointer => 1,
+            Token::DecrementPointer => -1,
+            _ => unreachable!("Unexpected token type for count_net_pointer_ops"),
         };
-        let mut count = 0;
 
-        while count < limit && self.tokens.get(count) == Some(&token_type) {
-            count += 1;
-        }
-
-        if count == limit && self.tokens.get(count) == Some(&&token_type) {
-            let mut excess = 0;
-            while self.tokens.get(count + excess) == Some(&token_type) {
-                excess += 1;
+        let mut clamped = None;
+        while let Some(next_token) = self.tokens.front() {
+            match next_token {
+                Token::IncrementPointer => {
+                    match net.checked_add(1) {
+                        Some(result) => net = result,
+                        None => clamped = Some(isize::MAX),
+                    }
+                    self.tokens.pop_front();
+                    self.position += 1;
+                }
+                Token::DecrementPointer => {
+                    match net.checked_sub(1) {
+                        Some(result) => net = result,
+                        None => clamped = Some(isize::MIN),
+                    }
+                    self.tokens.pop_front();
+                    self.position += 1;
+                }
+                _ => break,
             }
+        }
 
-            if token_type == Token::IncrementByte || token_type == Token::DecrementByte {
-                eprintln!(
-                    "Warning: More than {} consecutive `{}` tokens truncated to maximum value.",
-                    limit, token_type
-                );
+        if let Some(limit) = clamped {
+            eprintln!(
+                "Warning: Pointer movement overflowed. Clamped to {}.",
+                limit
+            );
+            return limit;
+        }
+
+        net
+    }
+
+    /// Counts the net byte operations (increment/decrement) from the front of the queue.
+    ///
+    /// # Details
+    /// If an overflow/underflow occurs, the net value is clamped to `i8::MAX` or `i8::MIN`.
+    fn count_net_byte_ops(&mut self, token: Token) -> i8 {
+        let mut net: i8 = match token {
+            Token::IncrementByte => 1,
+            Token::DecrementByte => -1,
+            _ => unreachable!("Unexpected token type for count_net_byte_ops"),
+        };
+
+        let mut clamped = None;
+        while let Some(next_token) = self.tokens.front() {
+            match next_token {
+                Token::IncrementByte => {
+                    match net.checked_add(1) {
+                        Some(result) => net = result,
+                        None => clamped = Some(i8::MAX),
+                    }
+                    self.tokens.pop_front();
+                    self.position += 1;
+                }
+                Token::DecrementByte => {
+                    match net.checked_sub(1) {
+                        Some(result) => net = result,
+                        None => clamped = Some(i8::MIN),
+                    }
+                    self.tokens.pop_front();
+                    self.position += 1;
+                }
+                _ => break,
             }
         }
 
-        if count > 0 {
-            self.tokens.drain(0..count);
-            self.position += count;
+        if let Some(limit) = clamped {
+            eprintln!("Warning: Byte operation overflowed. Clamped to {}.", limit);
+            return limit;
         }
 
-        count
+        net
     }
 }

@@ -1,13 +1,12 @@
 use std::fmt;
 use std::fmt::Formatter;
+use std::num::Wrapping;
 
 /// The BfOp enum represents the different Brainfuck operations.
 #[derive(Debug, Clone, PartialEq)]
 pub enum BfOp {
-    IncrementPointer(usize), // >
-    DecrementPointer(usize), // <
-    IncrementByte(u8),       // +
-    DecrementByte(u8),       // -
+    PointerIncrement(isize), // > or <
+    Increment(Wrapping<i8>), // + or -
     OutputByte,              // .
     InputByte,               // ,
     Loop(Vec<BfOp>),         // [ ... ]
@@ -28,42 +27,40 @@ pub enum OptimizedOp {
 impl fmt::Display for BfOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
-            BfOp::IncrementPointer(count) => write!(
-                f,
-                ">{}",
-                if *count > 1 {
-                    count.to_string()
+            BfOp::PointerIncrement(offset) => {
+                if *offset == 0 {
+                    write!(f, "")
                 } else {
-                    String::new()
+                    let (symbol, value) = if *offset > 0 {
+                        (">", *offset)
+                    } else {
+                        ("<", -offset)
+                    };
+
+                    if value == 1 {
+                        write!(f, "{}", symbol)
+                    } else {
+                        write!(f, "{}{}", symbol, value)
+                    }
                 }
-            ),
-            BfOp::DecrementPointer(count) => write!(
-                f,
-                "<{}",
-                if *count > 1 {
-                    count.to_string()
+            }
+            BfOp::Increment(count) => {
+                if count.0 == 0 {
+                    write!(f, "")
                 } else {
-                    String::new()
+                    let (symbol, value) = if count.0 > 0 {
+                        ("+", count.0)
+                    } else {
+                        ("-", count.0.abs())
+                    };
+
+                    if value == 1 {
+                        write!(f, "{}", symbol)
+                    } else {
+                        write!(f, "{}{}", symbol, value)
+                    }
                 }
-            ),
-            BfOp::IncrementByte(count) => write!(
-                f,
-                "+{}",
-                if *count > 1 {
-                    count.to_string()
-                } else {
-                    String::new()
-                }
-            ),
-            BfOp::DecrementByte(count) => write!(
-                f,
-                "-{}",
-                if *count > 1 {
-                    count.to_string()
-                } else {
-                    String::new()
-                }
-            ),
+            }
             BfOp::OutputByte => write!(f, "."),
             BfOp::InputByte => write!(f, ","),
             BfOp::Loop(ops) => {

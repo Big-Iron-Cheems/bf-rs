@@ -38,28 +38,27 @@ impl Interpreter {
     ) -> Result<(), InterpreterError> {
         for op in ops {
             match op {
-                BfOp::IncrementPointer(count) => {
-                    self.pointer += count;
-                    while self.pointer >= self.memory.len() {
-                        self.memory.push(0);
-                    }
-                }
-                BfOp::DecrementPointer(count) => {
-                    let count = *count;
-                    if self.pointer >= count {
-                        self.pointer -= count;
+                BfOp::PointerIncrement(offset) => {
+                    if offset.is_negative() {
+                        let magnitude = offset.wrapping_abs() as usize;
+                        if self.pointer >= magnitude {
+                            self.pointer -= magnitude;
+                        } else {
+                            return Err(InterpreterError::PointerUnderflow {
+                                position: self.pointer,
+                                attempted_move: magnitude,
+                            });
+                        }
                     } else {
-                        return Err(InterpreterError::PointerUnderflow {
-                            position: self.pointer,
-                            attempted_move: count,
-                        });
+                        self.pointer += *offset as usize;
+                        while self.pointer >= self.memory.len() {
+                            self.memory.push(0);
+                        }
                     }
                 }
-                BfOp::IncrementByte(count) => {
-                    self.memory[self.pointer] = self.memory[self.pointer].wrapping_add(*count);
-                }
-                BfOp::DecrementByte(count) => {
-                    self.memory[self.pointer] = self.memory[self.pointer].wrapping_sub(*count);
+                BfOp::Increment(count) => {
+                    self.memory[self.pointer] =
+                        self.memory[self.pointer].wrapping_add_signed(count.0);
                 }
                 BfOp::OutputByte => {
                     stdout
